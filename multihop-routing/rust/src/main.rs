@@ -382,15 +382,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .client()
         .generate_to_address(6, &miningwallet_address);
     // Wait for channels to reach CHANNELD_NORMAL state
-    let (alice_bob_ch, _) = alice_ln.wait_for_channeld_state(bob_ln.clone(), &bob_nodeid);
-    let (bob_carol_ch, _) = bob_ln.wait_for_channeld_state(carol_ln.clone(), &carol_nodeid);
+    let alice_bob_ch = alice_ln
+        .wait_for_channeld_state(bob_ln.clone(), &bob_nodeid)
+        .0
+        .unwrap();
+    let bob_carol_ch = bob_ln
+        .wait_for_channeld_state(carol_ln.clone(), &carol_nodeid)
+        .1
+        .unwrap();
 
-    if let (Some(a), Some(b)) = (alice_bob_ch, bob_carol_ch) {
-        println!("SUCCESS: Alice channel state is {:?}", a.get("state"));
-        println!("SUCCESS: Bob channel state is {:?}", b.get("state"));
-    } else {
-        println!("ERROR: One or both channels failed to open or reach CHANNELD_NORMAL.");
-    }
+    println!("ALice and Bob's Channels {alice_bob_ch:?} {bob_carol_ch:?}");
 
     println!("Confirming Alice's balance, {}", alice_ln.get_balance());
     println!("Confirming Bob's balance, {}", bob_ln.get_balance());
@@ -467,10 +468,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .get("forwards")
         .and_then(|v| v.as_array())
         .ok_or("Failed to parse Bob's forwarding list")?;
+    println!("\n");
+    println!("Bob's forwarded payments {:?}", forwards_array);
+    let alice_bob_scid = alice_bob_ch
+        .get("short_channel_id")
+        .and_then(|p| p.as_str())
+        .unwrap();
+    let bob_carol_scid = bob_carol_ch
+        .get("short_channel_id")
+        .and_then(|p| p.as_str())
+        .unwrap();
+    println!("A <-> B channel {alice_bob_scid} and B <-> C channel {bob_carol_scid}");
     // Find the record where out_channel matches Carol's channel scid from the invoice
-    let matching_forward = forwards_array
-        .iter()
-        .find(|f| f.get("out_channel").and_then(|c| c.as_str()) == Some("1226x2x0"));
+    let matching_forward = forwards_array.iter().find(|f| {
+        f.get("out_channel").and_then(|c| c.as_str()) == Some(bob_carol_scid)
+            && f.get("in_channel").and_then(|c| c.as_str()) == Some(alice_bob_scid)
+    });
     println!("Matched forwarded payment {:?}", matching_forward);
 
     let mut fee_msat: u64 = 0;
