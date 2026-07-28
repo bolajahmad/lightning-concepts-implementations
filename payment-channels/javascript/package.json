@@ -1,0 +1,13 @@
+{
+  "name": "ln-week-2-assignment",
+  "version": "1.0.0",
+  "description": "Week 2 assignment for Mastering LN",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "bitcoin-core": "^4.0.0",
+    "axios": "^1.13.0"
+  }
+}

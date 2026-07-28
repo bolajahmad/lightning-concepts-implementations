@@ -1,0 +1,51 @@
+services:
+  bitcoind:
+    image: ruimarinho/bitcoin-core:23
+    container_name: bitcoind
+    command:
+      - -regtest=1
+      - -server=1
+      - -txindex=1
+      - -rpcbind=0.0.0.0
+      - -rpcallowip=0.0.0.0/0
+      - -rpcuser=alice
+      - -rpcpassword=password
+      - -fallbackfee=0.0001
+    ports:
+      - "18443:18443" # RPC
+      - "18444:18444" # P2P
+    volumes:
+      - bitcoin-data:/home/bitcoin/.bitcoin
+    networks:
+      - ln-network
+
+  cln:
+    image: elementsproject/lightningd:latest
+    container_name: ln-node
+    depends_on:
+      - bitcoind
+    command:
+      - --network=regtest
+      - --log-level=debug
+      - --bitcoin-rpcuser=alice
+      - --bitcoin-rpcpassword=password
+      - --bitcoin-rpcport=18443
+      - --bitcoin-rpcconnect=bitcoind
+      - --clnrest-port=3010
+      - --clnrest-protocol=http
+      - --clnrest-host=0.0.0.0
+    ports:
+      - "9735:9735"
+      - "3010:3010"
+    volumes:
+      - lightning-data:/root/.lightning
+    networks:
+      - ln-network
+
+volumes:
+  bitcoin-data:
+  lightning-data:
+
+networks:
+  ln-network:
+    driver: bridge
